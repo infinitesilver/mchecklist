@@ -1,26 +1,29 @@
 import click
-from click import echo
+
 
 @click.group()
 def cli():
     pass
 
-@click.command()
-@click.option('--path', help='path to destination')
-def path_create(path: str):
+
+@cli.command()
+@click.argument('joy', required=False)
+@click.option('-p', '--path', help='path to destination', show_default=True)
+def path_create(path: str, joy: str):
     """Creates the designated path! (Not actually, just pretends to)"""
+    click.echo(f"{path} created. {joy}")
 
-    echo(f"{path} created.")
 
-
-@click.command()
+@cli.command()
 def hello():
     """Says hello"""
+    click.echo('hello')
 
-    echo('hello')
+
+@cli.command()
+def test():
+    click.echo('test')
 
 
 if __name__ == '__main__':
-    cli.add_command(path_create)
-    cli.add_command(hello)
     cli()
