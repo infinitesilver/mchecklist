@@ -29,18 +29,18 @@ def create():
 
 
 @cli.command()
-@cli.argument("artist", type=str)
+@click.argument("artist", type=str)
 def add(artist: str):
     """Add ARTIST to the checklist."""
 
 
 @cli.command()
-@cli.argument("release", prompt="Enter the index or name of the release", nargs=-1)
-@cli.option(
+@click.argument("release", nargs=-1)
+@click.option(
     "--artist", type=str, help="Specify an artist other than the currently focused one"
 )
 def check(release, artist: str):
-    """Mark a release as listened to."""
+    """Mark RELEASE as listened to."""
 
 
 @cli.command()
@@ -48,14 +48,14 @@ def next():
     """Focus on a new artist."""
 
 
-@cli.command()
-@cli.argument("artist", type=str)
+@click.command()
+@click.argument("artist", type=str)
 def fetch(artist: str):
     """Switch the focus to ARTIST."""
 
 
 @cli.command()
-@cli.argument("artist", type=str)
+@click.argument("artist", type=str)
 def focus(artist: str):
     """Switch the focus to ARTIST."""
 
