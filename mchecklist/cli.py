@@ -1,4 +1,6 @@
 import click
+import mchecklist
+
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -30,6 +32,7 @@ def create():
 
 @cli.command()
 @click.argument("artist", type=str)
+@click.option("--album", type=str, help="Add only a specific album from the artist.")
 def add(artist: str):
     """Add ARTIST to the checklist."""
 
@@ -58,6 +61,21 @@ def fetch(artist: str):
 @click.argument("artist", type=str)
 def focus(artist: str):
     """Switch the focus to ARTIST."""
+
+
+@cli.command()
+@click.argument("artist", type=str)
+def remove_artist(artist: str):
+    """Remove ARTIST from the checklist entirely."""
+
+
+@cli.command()
+@click.argument("release", type=str)
+@click.option(
+    "--artist", type=str, help="Specify an artist other than the currently focused one."
+)
+def remove_release(release: str, artist: str):
+    """Remove RELEASE from the checklist entirely."""
 
 
 if __name__ == "__main__":
