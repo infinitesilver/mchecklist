@@ -1,15 +1,15 @@
 from setuptools import setup
 
 setup(
-    name='mchecklist',
-    version='0.0.1',
-    py_modules=['mchecklist'],
+    name="mchecklist",
+    version="0.0.1",
+    py_modules=["mchecklist"],
     install_requires=[
-        'Click',
+        "Click",
     ],
     entry_points={
-        'console_scripts': [
-            'mchecklist = mchecklist:cli',
+        "console_scripts": [
+            "mchecklist = mchecklist:cli",
         ],
     },
 )
