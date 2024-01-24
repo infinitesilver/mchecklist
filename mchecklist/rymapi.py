@@ -16,7 +16,7 @@ class RymApi:
         self.driver = webdriver.Firefox(options=options)
         self.page_counter = 0
 
-    def reset_driver(self, current_link):
+    def reset_driver(self, current_link: str) -> None:
         self.driver.quit()
 
         options = Options()
@@ -28,10 +28,10 @@ class RymApi:
         self.driver.get(current_link)
         self.page_counter = 0
 
-    def quit(self):
+    def quit(self) -> None:
         self.driver.quit()
 
-    def get_artist(self, artist):
+    def _get_artist(self, artist: str):
         pass
 
     def get_release(self, artist, release_name) -> (str, Dict):
@@ -77,7 +77,7 @@ class RymApi:
 
         return releases_dict
 
-    def rymify(string: str):
+    def rymify(string: str) -> str:
         """Converts an artist or release name to how it would appear in an RYM link."""
 
         # Step 1: Convert to lowercase, replace spaces with dashes, and convert ampersand to "and"

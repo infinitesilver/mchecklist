@@ -28,11 +28,12 @@ def cli():
 @cli.command()
 def create():
     """Create a new checklist."""
+    
 
 
 @cli.command()
 @click.argument("artist", type=str)
-@click.option("--album", type=str, help="Add only a specific album from the artist.")
+@click.option("--title", type=str, help="Add only a specific release from the artist.")
 def add(artist: str):
     """Add ARTIST to the checklist."""
 
