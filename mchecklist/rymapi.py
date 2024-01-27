@@ -1,6 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
+import requests
+from bs4 import BeautifulSoup
 from unidecode import unidecode
 from fake_useragent import UserAgent
 from typing import Dict

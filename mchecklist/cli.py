@@ -28,7 +28,19 @@ def cli():
 @cli.command()
 def create():
     """Create a new checklist."""
-    
+
+    filename = mchecklist.init_database
+    if not filename:
+        click.echo(
+            "A checklist already exists with that name. Use the edit command to change an already existing checklist."
+        )
+    else:
+        click.echo(f"{filename} created.")
+
+
+@cli.command()
+def edit():
+    pass
 
 
 @cli.command()
