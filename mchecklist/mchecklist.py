@@ -7,7 +7,7 @@ from typing import Optional
 def _get_checklist_path(name: str) -> Path:
     source_path = Path(__file__).resolve()
     source_dir = source_path.parent
-    return Path(f"{source_dir}/checklists/{name}.json")
+    return Path(source_dir).joinpath("checklists", f"{name}.json")
 
 
 def init_database(name="") -> Optional[str]:
@@ -26,6 +26,7 @@ def init_database(name="") -> Optional[str]:
         checklist.close()
         return f"checklist{counter}"
 
+    # If a checklist with the same name doesn't already exist
     if not Path(checklists_dir).joinpath(f"{name}.json").exists():
         checklist = open(Path(checklists_dir).joinpath(f"{name}.json"), "w")
         checklist.close()
