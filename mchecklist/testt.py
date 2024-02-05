@@ -13,24 +13,31 @@ driver = webdriver.Firefox(options=options)
 
 driver.get("https://rateyourmusic.com/artist/viper-1")
 
-expand_buttons = driver.find_elements(By.CLASS_NAME, 'disco_expand_section_btn')
-showing_amounts = driver.find_element(By.ID, 'discography').find_elements(By.CLASS_NAME, "disco_header_top")
+expand_buttons = driver.find_elements(By.CLASS_NAME, "disco_expand_section_btn")
+showing_amounts = driver.find_element(By.ID, "discography").find_elements(
+    By.CLASS_NAME, "disco_header_top"
+)
 cookies_button = driver.find_element(By.CLASS_NAME, "fc-cta-consent")
 
 cookies_button.click()
 
 highest = 0
-for i in range(0,3):
-    showing_amount = showing_amounts[i].find_element(By.CLASS_NAME, 'disco_showing').find_element(By.CSS_SELECTOR, "span").text
-    release_amount = int(showing_amount[showing_amount.rfind(" ") + 1:])
+for i in range(0, 3):
+    showing_amount = (
+        showing_amounts[i]
+        .find_element(By.CLASS_NAME, "disco_showing")
+        .find_element(By.CSS_SELECTOR, "span")
+        .text
+    )
+    release_amount = int(showing_amount[showing_amount.rfind(" ") + 1 :])
     if release_amount > highest:
         highest = release_amount
     print(release_amount)
-    
+
     driver.execute_script("arguments[0].click();", expand_buttons[i])
 
 # Should wait the proper amount of time for releases to load
-time.sleep(highest/40)
+time.sleep(highest / 40)
 src = driver.page_source
 driver.quit()
 
@@ -55,18 +62,18 @@ for id_ in ["s", "e", "m"]:
 
         ratings = release.select_one(".disco_ratings").contents[0]
 
-        year_check = (
-            release.select_one(".disco_subline").select_one("span").contents
-        )
+        year_check = release.select_one(".disco_subline").select_one("span").contents
         # If the release has a listed year
         if len(year_check) > 0:
             year = year_check[0]
         else:
             year = "N/A"
 
-        print({
-            "Link": link,
-            "Average": average,
-            "Ratings": ratings,
-            "Year": year,
-        })
+        print(
+            {
+                "Link": link,
+                "Average": average,
+                "Ratings": ratings,
+                "Year": year,
+            }
+        )

@@ -121,7 +121,7 @@ def get_one_release(artist, release_title) -> (str, Dict):
 def rymify(artist_name: str) -> str:
     """Converts an artist or release name to how it would appear in an RYM link."""
 
-    # Step 1: Convert to lowercase, replace spaces with dashes, and convert ampersand to "and"
+    # Convert to lowercase, convert ampersand to "and", and replace spaces with dashes
     return artist_name.lower().replace(" & ", "-and-").replace(" ", "-")
 
 

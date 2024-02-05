@@ -11,6 +11,8 @@ def _get_checklist_path(name: str) -> Path:
 
 
 def init_database(name="") -> Optional[str]:
+    """Create a new JSON file for a checklist. Called by create."""
+
     source_path = Path(__file__).resolve()
     source_dir = source_path.parent
 
@@ -33,6 +35,12 @@ def init_database(name="") -> Optional[str]:
         return name
     else:
         return
+
+def rename_checklist(old_name: str, new_name: str) -> None:
+    """Renames a checklist's JSON file. Called by edit."""
+
+    checklist_path = _get_checklist_path(old_name)
+    checklist_path.rename(f"{new_name}.json")
 
 
 # Debug

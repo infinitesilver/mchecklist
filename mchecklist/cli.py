@@ -39,6 +39,8 @@ def create():
 
 
 @cli.command()
+@click.argument("checklist name", type=str)
+@click.option("--name", type=str, help="Change the name of the checklist")
 def edit():
     pass
 
