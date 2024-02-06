@@ -1,5 +1,6 @@
 import click
 import mchecklist
+import re
 
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -26,13 +27,19 @@ def cli():
 
 
 @cli.command()
-def create():
+@click.option("--name", type=str, help="Set the checklist's name.")
+def create(name):
     """Create a new checklist."""
 
-    filename = mchecklist.init_database
+    if not name:
+        filename = mchecklist.init_database()
+    else:
+        sanitized_name = re.sub(r'[^\w_. -]', '_', name).lower().strip()
+        filename = mchecklist.init_database(sanitized_name)
+    
     if not filename:
         click.echo(
-            "A checklist already exists with that name. Use the edit command to change an already existing checklist."
+            "A checklist already exists with that name. Use the edit command to rename an already existing checklist."
         )
     else:
         click.echo(f"{filename} created.")
@@ -41,8 +48,9 @@ def create():
 @cli.command()
 @click.argument("checklist name", type=str)
 @click.option("--name", type=str, help="Change the name of the checklist")
-def edit():
-    pass
+def edit(checklist_name, name):
+    if name:
+        mchecklist.rename(checklist_name)
 
 
 @cli.command()

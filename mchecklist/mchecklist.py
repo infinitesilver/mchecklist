@@ -39,9 +39,13 @@ def init_database(name="") -> Optional[str]:
 def rename_checklist(old_name: str, new_name: str) -> None:
     """Renames a checklist's JSON file. Called by edit."""
 
-    checklist_path = _get_checklist_path(old_name)
-    checklist_path.rename(f"{new_name}.json")
+    checklist_path = _get_checklist_path(f"{old_name}.json")
+    if not checklist_path.parent.joinpath(f"{new_name}.json").exists():
+        checklist_path.rename(f"{new_name}.json")
+    else:
+        return
 
 
 # Debug
-print(init_database())
+if __name__ == "__main__":
+    print(init_database())

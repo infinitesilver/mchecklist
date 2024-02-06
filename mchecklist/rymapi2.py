@@ -126,4 +126,5 @@ def rymify(artist_name: str) -> str:
 
 
 # Debug
-print(get_releases("aphex twin", ["album", "ep"]))
+if __name__ == "__main__":
+    print(get_releases("aphex twin", ["album", "ep"]))
