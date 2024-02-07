@@ -32,32 +32,54 @@ def create(name):
     """Create a new checklist."""
 
     if not name:
-        filename = mchecklist.init_database()
+        filename = mchecklist.init_checklist()
     else:
-        sanitized_name = re.sub(r'[^\w_. -]', '_', name).lower().strip()
-        filename = mchecklist.init_database(sanitized_name)
+        filename = mchecklist.init_checklist(name)
     
     if not filename:
         click.echo(
-            "A checklist already exists with that name. Use the edit command to rename an already existing checklist."
+            "A checklist with that name already exists. Use the edit command to rename an existing checklist."
         )
     else:
         click.echo(f"{filename} created.")
 
 
 @cli.command()
-@click.argument("checklist name", type=str)
-@click.option("--name", type=str, help="Change the name of the checklist")
+@click.argument("checklist_name", type=str)
+@click.option("--name", type=str, help="Change the name of the checklist.")
 def edit(checklist_name, name):
+    """Make edits to the checklist with name CHECKLIST_NAME."""
+
     if name:
-        mchecklist.rename(checklist_name)
+        new_name = mchecklist.rename_checklist(checklist_name, name)
+        if new_name:
+            click.echo(f"{checklist_name} successfully renamed to {new_name}.")
+        else:
+            click.echo("A checklist with that name already exists, please try again.")
+    
+    # Checks if no options were passed
+    if not name:
+        click.echo("No changes made.\nTry 'mchecklist edit -h' for help.")
+
+
+@cli.command()
+@click.argument("checklist_name", type=str)
+def delete(checklist_name):
+    """Delete a checklist with name CHECKLIST_NAME."""
+
+    if not mchecklist.exists(checklist_name):
+        return
+    
+    if click.confirm("Are you sure? This will PERMANENTLY delete the checklist and all of its data.", abort=True):
+        pass
+
 
 
 @cli.command()
 @click.argument("artist", type=str)
 @click.option("--title", type=str, help="Add only a specific release from the artist.")
 def add(artist: str):
-    """Add ARTIST to the checklist."""
+    """Add ARTIST or a release by ARTIST to the checklist."""
 
 
 @cli.command()

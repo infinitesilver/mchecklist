@@ -3,4 +3,5 @@ __pycache__/
 *.egg-info/
 mytest/
 checklists/
+config.json
 .vscode/
