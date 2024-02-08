@@ -30,7 +30,7 @@ def init_checklist(name="") -> Optional[str]:
     # If no name argument was passed
     if not name:
         counter = 1
-        while checklists_dir.joinpath(f"checklist{counter}.json").exists():
+        while exists(f"checklist{counter}"):
             counter += 1
         checklist = open(checklists_dir.joinpath(f"checklist{counter}.json"), "x")
         returned_name = f"checklist{counter}"
@@ -38,7 +38,7 @@ def init_checklist(name="") -> Optional[str]:
         sanitized_name = sanitize(name)
 
         # If a checklist with the same name already exists
-        if checklists_dir.joinpath(f"{sanitized_name}.json").exists():
+        if exists(sanitized_name):
             return None
 
         checklist = open(checklists_dir.joinpath(f"{sanitized_name}.json"), "x")
@@ -75,7 +75,7 @@ def rename_checklist(old_name: str, new_name: str) -> Optional[str]:
 
     sanitized_new_name = sanitize(new_name)
 
-    if not checklist_path.parent.joinpath(f"{sanitized_new_name}.json").exists():
+    if not exists(sanitized_new_name):
         checklist_path.rename(f"{sanitized_new_name}.json")
         return sanitized_new_name
 
