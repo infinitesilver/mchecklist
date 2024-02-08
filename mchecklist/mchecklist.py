@@ -14,7 +14,7 @@ def _get_checklist_path(name: str) -> Optional[Path]:
         return None
 
 
-def exists(checklist_name: str) -> bool:
+def checklist_exists(checklist_name: str) -> bool:
     return _get_checklist_path(checklist_name)
 
 
@@ -30,7 +30,7 @@ def init_checklist(name="") -> Optional[str]:
     # If no name argument was passed
     if not name:
         counter = 1
-        while exists(f"checklist{counter}"):
+        while checklist_exists(f"checklist{counter}"):
             counter += 1
         checklist = open(checklists_dir.joinpath(f"checklist{counter}.json"), "x")
         returned_name = f"checklist{counter}"
@@ -38,7 +38,7 @@ def init_checklist(name="") -> Optional[str]:
         sanitized_name = sanitize(name)
 
         # If a checklist with the same name already exists
-        if exists(sanitized_name):
+        if checklist_exists(sanitized_name):
             return None
 
         checklist = open(checklists_dir.joinpath(f"{sanitized_name}.json"), "x")
@@ -68,23 +68,30 @@ def init_checklist(name="") -> Optional[str]:
 def rename_checklist(old_name: str, new_name: str) -> Optional[str]:
     """Renames a checklist's JSON file. Called by edit."""
 
-    checklist_path = _get_checklist_path(f"{sanitize(old_name)}.json")
+    checklist_path = _get_checklist_path(sanitize(old_name))
 
     if not checklist_path:
         return None
 
     sanitized_new_name = sanitize(new_name)
 
-    if not exists(sanitized_new_name):
+    if not checklist_exists(sanitized_new_name):
         checklist_path.rename(f"{sanitized_new_name}.json")
         return sanitized_new_name
-
     else:
         return None
 
 
-def delete_checklist(checklist_name: str) -> Optional[str]:
+def delete_checklist(name: str) -> Optional[str]:
     """Deletes a checklist's JSON file. Called by delete."""
+
+    checklist_path = _get_checklist_path(name)
+
+    if checklist_path:
+        checklist_path.unlink()
+        return name
+    else:
+        return None
 
 
 def sanitize(string: str) -> str:

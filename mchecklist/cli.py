@@ -46,19 +46,19 @@ def create(name):
 
 @cli.command()
 @click.argument("checklist_name", type=str)
-@click.option("--name", type=str, help="Change the name of the checklist.")
-def edit(checklist_name, name):
+@click.option("--rename", type=str, help="Change the name of the checklist.")
+def edit(checklist_name, rename):
     """Make edits to the checklist with name CHECKLIST_NAME."""
 
-    if name:
-        new_name = mchecklist.rename_checklist(checklist_name, name)
+    if rename:
+        new_name = mchecklist.rename_checklist(checklist_name, rename)
         if new_name:
             click.echo(f"{checklist_name} successfully renamed to {new_name}.")
         else:
             click.echo("A checklist with that name already exists, please try again.")
     
     # Checks if no options were passed
-    if not name:
+    if not rename:
         click.echo("No changes made.\nTry 'mchecklist edit -h' for help.")
 
 
@@ -67,11 +67,13 @@ def edit(checklist_name, name):
 def delete(checklist_name):
     """Delete a checklist with name CHECKLIST_NAME."""
 
-    if not mchecklist.exists(checklist_name):
+    if not mchecklist.checklist_exists(checklist_name):
+        click.echo(f"Checklist with name {checklist_name} does not exist.")
         return
     
     if click.confirm("Are you sure? This will PERMANENTLY delete the checklist and all of its data.", abort=True):
-        pass
+        mchecklist.delete_checklist(checklist_name)
+        click.echo(f"{checklist_name} successfully deleted.")
 
 
 
