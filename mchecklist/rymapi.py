@@ -1,91 +1,141 @@
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-import requests
 from bs4 import BeautifulSoup
-from unidecode import unidecode
+import requests
 from fake_useragent import UserAgent
-from typing import Dict
-import re
+from typing import Dict, Optional
+from collections import namedtuple
 
 
-class RymApi:
-    def __init__(self):
-        options = Options()
-        user_agent = UserAgent().random
-        options.add_argument(f"--user-agent={user_agent}")
-        options.add_argument("--headless")
-        self.driver = webdriver.Firefox(options=options)
-        self.page_counter = 0
+ArtistReleases = namedtuple('ArtistReleases', ['artist_name', 'releases'])
 
-    def reset_driver(self, current_link: str) -> None:
-        self.driver.quit()
 
-        options = Options()
-        user_agent = UserAgent().random
-        options.add_argument(f"--user-agent={user_agent}")
-        options.add_argument("--headless")
-        self.driver = webdriver.Firefox(options=options)
+def get_releases(artist: str, release_types=["album"]) -> ArtistReleases:
+    """Get all releases of a certain type or types"""
 
-        self.driver.get(current_link)
-        self.page_counter = 0
+    headers = {"User-Agent": UserAgent().random}
+    response = requests.get(
+        f"https://rateyourmusic.com/artist/{rymify(artist)}", headers=headers
+    )
 
-    def quit(self) -> None:
-        self.driver.quit()
+    # Immediately terminate if artist doesn't exist
+    if not response.status_code == 200:
+        return None
 
-    def _get_artist(self, artist: str):
-        pass
+    soup = BeautifulSoup(response.content, "html.parser")
 
-    def get_release(self, artist, release_name) -> (str, Dict):
-        pass
+    releases_list = []
 
-    def get_releases(self, artist, release_type="album") -> Dict:
-        if release_type == "album":
-            id_ = "s"
-        elif release_type == "mixtape":
-            id_ = "m"
-        elif release_type == "ep":
-            id_ = "e"
-        else:
-            raise ValueError("Not a valid release type")
+    artist_name = soup.select_one(".artist_page meta")["content"]
 
-        table = self.driver.find_element(By.ID, "disco_type_" + id_)
-        releases = table.find_elements(By.CLASS_NAME, "disco_release")
+    for type in release_types:
+        match (type):
+            case ("album"):
+                id_ = "s"
+            case ("ep"):
+                id_ = "e"
+            case ("mixtape"):
+                id_ = "m"
+            case _:
+                raise ValueError("Not a valid release type")
 
-        releases_dict = {}
+        releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
-            title_and_link = release.find_element(
-                By.CLASS_NAME, "disco_mainline"
-            ).find_element(By.TAG_NAME, "a")
-            title = title_and_link.accessible_name
-            link = title_and_link.get_attribute("href")
+            title_and_link = release.select_one(".disco_info a")
+            title = title_and_link["title"]
+            link = title_and_link["href"]
 
-            year = release.find_element(By.CLASS_NAME, "disco_subline").text[:4]
-            ratings = release.find_element(By.CLASS_NAME, "disco_ratings").text
-            average = release.find_element(By.CLASS_NAME, "disco_avg_rating").text
+            ratings_check = release.select_one(".disco_ratings").contents
+            # If the ratings value exists (aka, if the release has any ratings)
+            if len(ratings_check) > 0:
+                ratings = ratings_check[0]
+            else:
+                continue
 
-            # Debug
-            print(title, link, year, ratings, average)
+            average = release.select_one(".disco_avg_rating").contents[0]
 
-            release_info = {
+            year_check = (
+                release.select_one(".disco_subline").select_one("span").contents
+            )
+            # If the release has a listed year
+            if len(year_check) > 0:
+                year = year_check[0]
+            else:
+                year = "N/A"
+
+            releases_list.append(
+                {
+                    "Title": title,
+                    "Link": link,
+                    "Average": average,
+                    "Ratings": ratings,
+                    "Year": year,
+                }
+            )
+
+    return ArtistReleases(artist_name, releases_list)
+
+
+def get_one_release(artist, release_title) -> ArtistReleases:
+    """Get the release that matches the title"""
+
+    headers = {"User-Agent": UserAgent().random}
+    response = requests.get(
+        f"https://rateyourmusic.com/artist/{rymify(artist)}", headers=headers
+    )
+    # Immediately terminate if artist doesn't exist
+    if not response.status_code == 200:
+        return
+
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    releases_dict = {}
+
+    for id_ in ["s", "e", "m"]:
+        releases = soup.select(f"#disco_type_{id_} .disco_release")
+
+        for release in releases:
+            title_and_link = release.select_one(".disco_info a")
+            title = title_and_link["title"]
+
+            if not title == release_title:
+                continue
+
+            link = title_and_link["href"]
+
+            ratings_check = release.select_one(".disco_ratings").contents
+            # If the ratings value exists (aka, if the release has any ratings)
+            if len(ratings_check) > 0:
+                ratings = ratings_check[0]
+            else:
+                continue
+
+            average = release.select_one(".disco_avg_rating").contents[0]
+
+            year_check = (
+                release.select_one(".disco_subline").select_one("span").contents
+            )
+            # If the release has a listed year
+            if len(year_check) > 0:
+                year = year_check[0]
+            else:
+                year = "N/A"
+
+            return {
+                "Title": title,
                 "Link": link,
-                "Release Year": year,
+                "Average": average,
                 "Ratings": ratings,
-                "Score": average,
+                "Year": year,
             }
 
-            releases_dict[title] = release_info
 
-        return releases_dict
+def rymify(artist_name: str) -> str:
+    """Converts an artist or release name to how it would appear in an RYM link."""
 
-    def rymify(string: str) -> str:
-        """Converts an artist or release name to how it would appear in an RYM link."""
+    # Convert to lowercase, convert ampersand to "and", and replace spaces with dashes
+    return artist_name.lower().replace(" & ", "-and-").replace(" ", "-")
 
-        # Step 1: Convert to lowercase, replace spaces with dashes, and convert ampersand to "and"
-        step1 = unidecode(string.lower()).replace(" ", "-").replace(" & ", "-and-")
 
-        # Step 2: Remove non-alphanumeric characters
-        step2 = re.sub("[^0-9a-zA-Z]+", "_", step1)
-
-        return step2
+# Debug
+if __name__ == "__main__":
+    print(get_releases("Classic J", ["album", "ep"]))

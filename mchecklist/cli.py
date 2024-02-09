@@ -1,5 +1,5 @@
 import click
-import mchecklist
+import mchecklist.mchecklist as mchecklist
 import re
 
 
@@ -35,7 +35,7 @@ def create(name):
         filename = mchecklist.init_checklist()
     else:
         filename = mchecklist.init_checklist(name)
-    
+
     if not filename:
         click.echo(
             "A checklist with that name already exists. Use the edit command to rename an existing checklist."
@@ -56,7 +56,7 @@ def edit(checklist_name, rename):
             click.echo(f"{checklist_name} successfully renamed to {new_name}.")
         else:
             click.echo("A checklist with that name already exists, please try again.")
-    
+
     # Checks if no options were passed
     if not rename:
         click.echo("No changes made.\nTry 'mchecklist edit -h' for help.")
@@ -70,18 +70,30 @@ def delete(checklist_name):
     if not mchecklist.checklist_exists(checklist_name):
         click.echo(f"Checklist with name {checklist_name} does not exist.")
         return
-    
-    if click.confirm("Are you sure? This will PERMANENTLY delete the checklist and all of its data.", abort=True):
+
+    if click.confirm(
+        "Are you sure? This will PERMANENTLY delete the checklist and all of its data.",
+        abort=True,
+    ):
         mchecklist.delete_checklist(checklist_name)
         click.echo(f"{checklist_name} successfully deleted.")
 
+
+@cli.command()
+def list():
+    """Prints a list of stored checklists."""
+    
+    for checklist_name in mchecklist.list_checklists():
+        click.echo(checklist_name)
 
 
 @cli.command()
 @click.argument("artist", type=str)
 @click.option("--title", type=str, help="Add only a specific release from the artist.")
 def add(artist: str):
-    """Add ARTIST or a release by ARTIST to the checklist."""
+    """Select releases from ARTIST's discography to add."""
+
+
 
 
 @cli.command()
