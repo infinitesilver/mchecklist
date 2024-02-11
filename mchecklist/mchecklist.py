@@ -1,9 +1,7 @@
 import json
 from pathlib import Path
-from pathlib import PurePath
 from typing import Optional, Dict, List
 import re
-import random
 from mchecklist.rymapi import ArtistReleases
 
 
@@ -13,7 +11,7 @@ CONFIG_FILE = SOURCE_DIR.joinpath("config.json")
 
 
 def _get_checklist_path(name: str) -> Optional[Path]:
-    if CHECKLIST_DIR.joinpath(f"{name}.json").exists():
+    if checklist_exists(name):
         return CHECKLIST_DIR.joinpath(f"{name}.json")
     else:
         return None
@@ -25,14 +23,13 @@ def _get_config_json() -> Dict:
 
 
 def checklist_exists(checklist_name: str) -> bool:
-    return _get_checklist_path(checklist_name)
+    return CHECKLIST_DIR.joinpath(f"{checklist_name}.json").exists()
 
 
 def init_checklist(name="") -> Optional[str]:
     """Create a new JSON file for a checklist. Called by create."""
 
-    SOURCE_DIR.joinpath("checklists").mkdir(exist_ok=True)
-    CHECKLIST_DIR
+    CHECKLIST_DIR.mkdir(exist_ok=True)
 
     # If no name argument was passed
     if not name:
@@ -85,6 +82,11 @@ def rename_checklist(old_name: str, new_name: str) -> Optional[str]:
 
     if not checklist_exists(sanitized_new_name):
         checklist_path.rename(f"{sanitized_new_name}.json")
+
+        config_json = _get_config_json()
+        if config_json["Current"] == old_name:
+            config_json["Current"] = sanitized_new_name
+
         return sanitized_new_name
     else:
         return None
@@ -99,10 +101,11 @@ def delete_checklist(name: str) -> Optional[str]:
         checklist_path.unlink()
 
         config_json = _get_config_json()
-        checklist_list = list_checklists()
-        config_json["Current"] = checklist_list[
-            random.randint(0, len(checklist_list) - 1)
-        ]
+
+        if config_json["Current"] == name:
+            config_json["Current"] == ""
+            with open(CONFIG_FILE) as config_file:
+                config_file.write(json.dumps(config_json))
 
         return name
     else:
@@ -110,19 +113,37 @@ def delete_checklist(name: str) -> Optional[str]:
 
 
 def releases_to_string(artist_releases: ArtistReleases) -> Optional[str]:
+    """Converts an ArtistReleases tuple to a readable string."""
+
     if not CONFIG_FILE.exists():
         return None
 
     current_checklist_name = _get_config_json()["Current"]
 
+    if not current_checklist_name:
+        return None
 
-def list_checklists() -> List:
+
+def list_checklists(mark_current=True) -> Optional[List]:
+    """Returns a list of checklist names from the checklists folder."""
+
     checklist_list = []
+    config_json = _get_config_json()
+
+    if not CHECKLIST_DIR.exists():
+        return None
 
     for checklist in CHECKLIST_DIR.iterdir():
-        if checklist.is_file():
-            checklist_list.append(checklist.name.strip(".json"))
-    
+        if not checklist.is_file():
+            continue
+
+        checklist_name = checklist.name.strip(".json")
+
+        if mark_current and checklist_name == config_json["Current"]:
+            checklist_list.append(f"{checklist_name} (Current)")
+        else:
+            checklist_list.append(checklist_name)
+
     return checklist_list
 
 

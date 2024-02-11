@@ -47,15 +47,21 @@ def create(name):
 @cli.command()
 @click.argument("checklist_name", type=str)
 @click.option("--rename", type=str, help="Change the name of the checklist.")
-def edit(checklist_name, rename):
+def edit(ctx, checklist_name, rename):
     """Make edits to the checklist with name CHECKLIST_NAME."""
+
+    if not mchecklist.checklist_exists(checklist_name):
+        click.echo(f"Checklist with name {checklist_name} does not exist.")
+        ctx.exit()
 
     if rename:
         new_name = mchecklist.rename_checklist(checklist_name, rename)
         if new_name:
             click.echo(f"{checklist_name} successfully renamed to {new_name}.")
         else:
-            click.echo("A checklist with that name already exists, please try again.")
+            click.echo(
+                f"A checklist with the name {rename} already exists, please try again."
+            )
 
     # Checks if no options were passed
     if not rename:
@@ -82,9 +88,16 @@ def delete(checklist_name):
 @cli.command()
 def list():
     """Prints a list of stored checklists."""
-    
-    for checklist_name in mchecklist.list_checklists():
-        click.echo(checklist_name)
+
+    checklist_list = mchecklist.list_checklists()
+
+    if checklist_list:
+        for checklist_name in mchecklist.list_checklists():
+            click.echo(checklist_name)
+    else:
+        click.echo(
+            "No checklists have been created. Try 'mchecklist create' to create a checklist."
+        )
 
 
 @cli.command()
@@ -92,8 +105,6 @@ def list():
 @click.option("--title", type=str, help="Add only a specific release from the artist.")
 def add(artist: str):
     """Select releases from ARTIST's discography to add."""
-
-
 
 
 @cli.command()
