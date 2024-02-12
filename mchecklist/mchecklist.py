@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, List
 import re
+from rymapi import Artist, Release
 
 
 SOURCE_DIR = Path(__file__).resolve().parent
@@ -21,9 +22,26 @@ def _get_config_json() -> Dict:
         return json.load(config_file)
 
 
+def _get_current_checklist() -> str:
+    with open(CONFIG_FILE) as config_file:
+        return json.load(config_file)["Current"]
+
+
 def _write_to_config(config_json) -> None:
     with open(CONFIG_FILE, "w") as config_file:
         config_file.write(json.dumps(config_json, indent=2))
+
+
+def _capitalize_release_type(release_type: str) -> str:
+    match(release_type):
+        case("album"):
+            return "Album"
+        case("ep"):
+            return "EP"
+        case("mixtape"):
+            return "Mixtape"
+        case _:
+            raise ValueError("Not a valid release type")
 
 
 def checklist_exists(checklist_name: str) -> bool:
@@ -65,7 +83,7 @@ def init_checklist(name="", genres=["All"]) -> Optional[str]:
     _write_to_config(config_json)
 
     # Edit new checklist
-    checklist_json = {"Releases": [], "Genres": genres}
+    checklist_json = {"Genres": genres, "Releases": []}
 
     with open(CHECKLIST_DIR.joinpath(f"{returned_name}.json"), "w") as checklist_file:
         checklist_file.write(json.dumps(checklist_json, indent=2))
@@ -116,8 +134,47 @@ def delete_checklist(name: str) -> Optional[str]:
         return None
 
 
-def releases_to_string(releases_list: List) -> str:
+def releases_to_string(artist: Artist, show_ratings=False, show_average=False) -> str:
     """Converts a list of releases to a readable string."""
+
+    releases_string: str = artist.name
+    type_dict = {"album": [], "ep": [], "mixtape": []}
+
+    for release in artist.releases:
+        type_dict[release.type].append(release)
+
+    for type_list in type_dict.items():
+        type_name = _capitalize_release_type(type_list[0])
+        releases = type_list[1]
+        releases_string += f"\n  {type_name}"
+        for release in releases:
+            releases_string += f"\n    {release.title} [{release.year}]"
+            if show_ratings:
+                releases_string += f": {release.ratings} ratings"
+            if show_average:
+                releases_string += f" ({release.average})"
+
+    return releases_string
+
+
+def add_release(release: Release) -> bool:
+    """Add a release entry to the current checklist."""
+
+    current_checklist_path = _get_checklist_path(_get_current_checklist())
+    with open(current_checklist_path) as checklist:
+        checklist_json: Dict = json.load(checklist)
+        releases_list: List[Release] = checklist["Releases"]
+    
+    for release_entry in releases_list:
+        if release == release_entry:
+            return False
+    
+    releases_list.append(release)
+    checklist_json["Releases"] = releases_list
+    with open(current_checklist_path, 'w') as checklist:
+        checklist.write(json.dumps(checklist_json))
+    
+    return True
 
 
 def list_checklists(mark_current=True) -> Optional[List]:

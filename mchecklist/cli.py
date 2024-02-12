@@ -1,5 +1,6 @@
 import click
-import mchecklist.mchecklist as mchecklist
+import mchecklist
+import rymapi
 import re
 
 
@@ -146,6 +147,12 @@ def remove_artist(artist: str):
 )
 def remove_release(release: str, artist: str):
     """Remove RELEASE from the checklist entirely."""
+
+
+@cli.command()
+def test():
+    releases = rymapi.get_artist_releases("Aphex Twin")
+    print(mchecklist.releases_to_string(releases[0]))
 
 
 if __name__ == "__main__":

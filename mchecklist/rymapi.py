@@ -1,11 +1,34 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import requests
 from fake_useragent import UserAgent
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+import collections
 
 
-def _get_release_info(
-    release_type: str, artist_name: str, release: BeautifulSoup.Tag
+Release = collections.namedtuple(
+    "Release", ["artist", "title", "link", "ratings", "average", "year", "type"]
+)
+
+Artist = collections.namedtuple("Artist", ["name", "releases"])
+
+
+# class Artist:
+#     def __init__(self, name):
+#         self.name: str = name
+#         self.releases: List[Release] = []
+
+#     def __len__(self):
+#         return len(self.releases)
+
+#     def __getitem__(self, position: int):
+#         return self.releases[position]
+
+#     def append(self, release: Release):
+#         self.releases.append(release)
+
+
+def _get_artist_release_info(
+    release_type: str, artist_name: str, release: Tag
 ) -> Optional[Dict]:
     title_and_link = release.select_one(".disco_info a")
     title = title_and_link["title"]
@@ -27,18 +50,10 @@ def _get_release_info(
     else:
         year = "N/A"
 
-    return {
-        "Artist": artist_name,
-        "Title": title,
-        "Link": link,
-        "Average": average,
-        "Ratings": ratings,
-        "Year": year,
-        "Type": release_type,
-    }
+    return Release(artist_name, title, link, ratings, average, year, release_type)
 
 
-def get_releases(artist: str, release_types=["album"]) -> List:
+def get_artist_releases(artist: str, release_types=["album"]) -> List[Artist]:
     """Get all releases of a certain type or types"""
 
     headers = {"User-Agent": UserAgent().random}
@@ -70,9 +85,11 @@ def get_releases(artist: str, release_types=["album"]) -> List:
         releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
-            releases_list.append(_get_release_info(type, artist_name, release))
+            releases_list.append(
+                _get_artist_release_info(release_type, artist_name, release)
+            )
 
-    return releases_list
+    return [Artist(artist_name, releases_list)]
 
 
 def get_one_release(artist, release_title) -> List:
@@ -148,4 +165,4 @@ def rymify(artist_name: str) -> str:
 
 # Debug
 if __name__ == "__main__":
-    print(get_releases("Classic J", ["album", "ep"]))
+    print(get_artist_releases("Classic J", ["album", "ep"]))
