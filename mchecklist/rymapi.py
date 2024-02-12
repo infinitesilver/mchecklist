@@ -12,36 +12,26 @@ Release = collections.namedtuple(
 Artist = collections.namedtuple("Artist", ["name", "releases"])
 
 
-# class Artist:
-#     def __init__(self, name):
-#         self.name: str = name
-#         self.releases: List[Release] = []
-
-#     def __len__(self):
-#         return len(self.releases)
-
-#     def __getitem__(self, position: int):
-#         return self.releases[position]
-
-#     def append(self, release: Release):
-#         self.releases.append(release)
-
-
 def _get_artist_release_info(
-    release_type: str, artist_name: str, release: Tag
+    release: Tag, release_type: str, artist_name: str
 ) -> Optional[Dict]:
     title_and_link = release.select_one(".disco_info a")
     title = title_and_link["title"]
     link = title_and_link["href"]
 
     ratings_check = release.select_one(".disco_ratings").contents
-    # If the ratings value exists (aka, if the release has any ratings)
+    # If the release has any ratings
     if len(ratings_check) > 0:
         ratings = ratings_check[0]
     else:
         return
 
-    average = release.select_one(".disco_avg_rating").contents[0]
+    average_check = release.select_one(".disco_avg_rating").contents
+    # If the release has an average score
+    if len(average_check) > 0:
+        average = average_check[0]
+    else:
+        return
 
     year_check = release.select_one(".disco_subline").select_one("span").contents
     # If the release has a listed year
@@ -53,7 +43,7 @@ def _get_artist_release_info(
     return Release(artist_name, title, link, ratings, average, year, release_type)
 
 
-def get_artist_releases(artist: str, release_types=["album"]) -> List[Artist]:
+def get_artist_releases(artist: str, release_types=["album"]) -> List[Release]:
     """Get all releases of a certain type or types"""
 
     headers = {"User-Agent": UserAgent().random}
@@ -85,11 +75,11 @@ def get_artist_releases(artist: str, release_types=["album"]) -> List[Artist]:
         releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
-            releases_list.append(
-                _get_artist_release_info(release_type, artist_name, release)
-            )
+            release_entry = _get_artist_release_info(release, release_type, artist_name)
+            if release_entry:
+                releases_list.append(release_entry)
 
-    return [Artist(artist_name, releases_list)]
+    return releases_list
 
 
 def get_one_release(artist, release_title) -> List:

@@ -151,8 +151,9 @@ def remove_release(release: str, artist: str):
 
 @cli.command()
 def test():
-    releases = rymapi.get_artist_releases("Aphex Twin")
-    print(mchecklist.releases_to_string(releases[0]))
+    releases1 = rymapi.get_artist_releases("Sematary-1", ["album", "ep", "mixtape"])
+    releases2 = rymapi.get_artist_releases("Aphex Twin", ["album", "ep", "mixtape"])
+    print(mchecklist.releases_to_string(releases2 + releases1))
 
 
 if __name__ == "__main__":

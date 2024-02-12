@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Dict, List
 import re
 from rymapi import Artist, Release
+import rymapi
 
 
 SOURCE_DIR = Path(__file__).resolve().parent
@@ -33,15 +34,27 @@ def _write_to_config(config_json) -> None:
 
 
 def _capitalize_release_type(release_type: str) -> str:
-    match(release_type):
-        case("album"):
+    match (release_type):
+        case ("album"):
             return "Album"
-        case("ep"):
+        case ("ep"):
             return "EP"
-        case("mixtape"):
+        case ("mixtape"):
             return "Mixtape"
         case _:
             raise ValueError("Not a valid release type")
+
+
+def release_to_dict(release: Release) -> Dict:
+    return {
+        "Artist": release.artist,
+        "Title": release.title,
+        "Link": release.link,
+        "Ratings": release.ratings,
+        "Average": release.average,
+        "Year": release.year,
+        "Type": _capitalize_release_type(release.type),
+    }
 
 
 def checklist_exists(checklist_name: str) -> bool:
@@ -127,53 +140,82 @@ def delete_checklist(name: str) -> Optional[str]:
         if config_json["Current"] == name:
             config_json["Current"] == ""
             with open(CONFIG_FILE) as config_file:
-                config_file.write(json.dumps(config_json))
+                config_file.write(json.dumps(config_json, indent=2))
 
         return name
     else:
         return None
 
 
-def releases_to_string(artist: Artist, show_ratings=False, show_average=False) -> str:
+def releases_to_string(
+    releases: List[Release], show_ratings=False, show_average=False
+) -> str:
     """Converts a list of releases to a readable string."""
 
-    releases_string: str = artist.name
+    releases_string: str = ""
     type_dict = {"album": [], "ep": [], "mixtape": []}
+    artist_dict = {}
 
-    for release in artist.releases:
-        type_dict[release.type].append(release)
+    for release in releases:
+        dupe = False
+        for artist in artist_dict:
+            if artist == release.artist:
+                dupe = True
 
-    for type_list in type_dict.items():
-        type_name = _capitalize_release_type(type_list[0])
-        releases = type_list[1]
-        releases_string += f"\n  {type_name}"
-        for release in releases:
-            releases_string += f"\n    {release.title} [{release.year}]"
-            if show_ratings:
-                releases_string += f": {release.ratings} ratings"
-            if show_average:
-                releases_string += f" ({release.average})"
+        if not dupe:
+            artist_dict[release.artist] = {"album": [], "ep": [], "mixtape": []}
+
+        artist_dict[release.artist][release.type].append(release)
+
+    increment = 1
+    for artist in artist_dict:
+        if releases_string == "":
+            releases_string += artist
+        else:
+            releases_string += f"\n\n{artist}"
+
+        for type_list in artist_dict[artist].items():
+            type_name = _capitalize_release_type(type_list[0])
+            releases = type_list[1]
+
+            if len(releases) > 0:
+                releases_string += f"\n  {type_name}"
+
+            for release in releases:
+                releases_string += f"\n%2d  {release.title} [{release.year}]" % (
+                    increment
+                )
+                increment += 1
+
+                if show_ratings:
+                    releases_string += f": {release.ratings} ratings"
+                if show_average:
+                    releases_string += f" ({release.average})"
 
     return releases_string
 
 
-def add_release(release: Release) -> bool:
+def add_releases(releases: List[Release]) -> bool:
     """Add a release entry to the current checklist."""
 
     current_checklist_path = _get_checklist_path(_get_current_checklist())
     with open(current_checklist_path) as checklist:
         checklist_json: Dict = json.load(checklist)
-        releases_list: List[Release] = checklist["Releases"]
-    
-    for release_entry in releases_list:
-        if release == release_entry:
-            return False
-    
-    releases_list.append(release)
+        releases_list: List[Release] = checklist_json["Releases"]
+
+    for release in releases:
+        dupe = False
+        for release_entry in releases_list:
+            if release == release_entry:
+                dupe = True
+
+        if not dupe:
+            releases_list.append(release_to_dict(release))
+
     checklist_json["Releases"] = releases_list
-    with open(current_checklist_path, 'w') as checklist:
-        checklist.write(json.dumps(checklist_json))
-    
+    with open(current_checklist_path, "w") as checklist:
+        checklist.write(json.dumps(checklist_json, indent=2))
+
     return True
 
 
@@ -206,4 +248,6 @@ def sanitize(string: str) -> str:
 
 # Debug
 if __name__ == "__main__":
-    print(list_checklists())
+    releases1 = rymapi.get_artist_releases("Sematary-1", ["album", "ep", "mixtape"])
+    releases2 = rymapi.get_artist_releases("Aphex Twin", ["album", "ep", "mixtape"])
+    print(releases_to_string(releases2 + releases1))
