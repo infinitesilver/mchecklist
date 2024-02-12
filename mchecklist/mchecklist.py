@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, List
 import re
-from mchecklist.rymapi import ArtistReleases
 
 
 SOURCE_DIR = Path(__file__).resolve().parent
@@ -22,11 +21,16 @@ def _get_config_json() -> Dict:
         return json.load(config_file)
 
 
+def _write_to_config(config_json) -> None:
+    with open(CONFIG_FILE, "w") as config_file:
+        config_file.write(json.dumps(config_json, indent=2))
+
+
 def checklist_exists(checklist_name: str) -> bool:
     return CHECKLIST_DIR.joinpath(f"{checklist_name}.json").exists()
 
 
-def init_checklist(name="") -> Optional[str]:
+def init_checklist(name="", genres=["All"]) -> Optional[str]:
     """Create a new JSON file for a checklist. Called by create."""
 
     CHECKLIST_DIR.mkdir(exist_ok=True)
@@ -50,7 +54,6 @@ def init_checklist(name="") -> Optional[str]:
         returned_name = sanitized_name
 
     # Edit config
-
     if SOURCE_DIR.joinpath("config.json").exists():
         with open(CONFIG_FILE) as config_file:
             config_json = json.load(config_file)
@@ -59,11 +62,11 @@ def init_checklist(name="") -> Optional[str]:
 
     config_json["Current"] = returned_name
 
-    with open(CONFIG_FILE, "w") as config_file:
-        config_file.write(json.dumps(config_json, indent=2))
+    _write_to_config(config_json)
 
     # Edit new checklist
-    checklist_json = {"Releases": []}
+    checklist_json = {"Releases": [], "Genres": genres}
+
     with open(CHECKLIST_DIR.joinpath(f"{returned_name}.json"), "w") as checklist_file:
         checklist_file.write(json.dumps(checklist_json, indent=2))
 
@@ -86,6 +89,7 @@ def rename_checklist(old_name: str, new_name: str) -> Optional[str]:
         config_json = _get_config_json()
         if config_json["Current"] == old_name:
             config_json["Current"] = sanitized_new_name
+            _write_to_config(config_json)
 
         return sanitized_new_name
     else:
@@ -112,16 +116,8 @@ def delete_checklist(name: str) -> Optional[str]:
         return None
 
 
-def releases_to_string(artist_releases: ArtistReleases) -> Optional[str]:
-    """Converts an ArtistReleases tuple to a readable string."""
-
-    if not CONFIG_FILE.exists():
-        return None
-
-    current_checklist_name = _get_config_json()["Current"]
-
-    if not current_checklist_name:
-        return None
+def releases_to_string(releases_list: List) -> str:
+    """Converts a list of releases to a readable string."""
 
 
 def list_checklists(mark_current=True) -> Optional[List]:

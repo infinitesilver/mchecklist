@@ -1,14 +1,44 @@
 from bs4 import BeautifulSoup
 import requests
 from fake_useragent import UserAgent
-from typing import Dict, Optional
-from collections import namedtuple
+from typing import List, Dict, Optional
 
 
-ArtistReleases = namedtuple('ArtistReleases', ['artist_name', 'releases'])
+def _get_release_info(
+    release_type: str, artist_name: str, release: BeautifulSoup.Tag
+) -> Optional[Dict]:
+    title_and_link = release.select_one(".disco_info a")
+    title = title_and_link["title"]
+    link = title_and_link["href"]
+
+    ratings_check = release.select_one(".disco_ratings").contents
+    # If the ratings value exists (aka, if the release has any ratings)
+    if len(ratings_check) > 0:
+        ratings = ratings_check[0]
+    else:
+        return
+
+    average = release.select_one(".disco_avg_rating").contents[0]
+
+    year_check = release.select_one(".disco_subline").select_one("span").contents
+    # If the release has a listed year
+    if len(year_check) > 0:
+        year = year_check[0]
+    else:
+        year = "N/A"
+
+    return {
+        "Artist": artist_name,
+        "Title": title,
+        "Link": link,
+        "Average": average,
+        "Ratings": ratings,
+        "Year": year,
+        "Type": release_type,
+    }
 
 
-def get_releases(artist: str, release_types=["album"]) -> ArtistReleases:
+def get_releases(artist: str, release_types=["album"]) -> List:
     """Get all releases of a certain type or types"""
 
     headers = {"User-Agent": UserAgent().random}
@@ -26,8 +56,8 @@ def get_releases(artist: str, release_types=["album"]) -> ArtistReleases:
 
     artist_name = soup.select_one(".artist_page meta")["content"]
 
-    for type in release_types:
-        match (type):
+    for release_type in release_types:
+        match (release_type):
             case ("album"):
                 id_ = "s"
             case ("ep"):
@@ -40,42 +70,12 @@ def get_releases(artist: str, release_types=["album"]) -> ArtistReleases:
         releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
-            title_and_link = release.select_one(".disco_info a")
-            title = title_and_link["title"]
-            link = title_and_link["href"]
+            releases_list.append(_get_release_info(type, artist_name, release))
 
-            ratings_check = release.select_one(".disco_ratings").contents
-            # If the ratings value exists (aka, if the release has any ratings)
-            if len(ratings_check) > 0:
-                ratings = ratings_check[0]
-            else:
-                continue
-
-            average = release.select_one(".disco_avg_rating").contents[0]
-
-            year_check = (
-                release.select_one(".disco_subline").select_one("span").contents
-            )
-            # If the release has a listed year
-            if len(year_check) > 0:
-                year = year_check[0]
-            else:
-                year = "N/A"
-
-            releases_list.append(
-                {
-                    "Title": title,
-                    "Link": link,
-                    "Average": average,
-                    "Ratings": ratings,
-                    "Year": year,
-                }
-            )
-
-    return ArtistReleases(artist_name, releases_list)
+    return releases_list
 
 
-def get_one_release(artist, release_title) -> ArtistReleases:
+def get_one_release(artist, release_title) -> List:
     """Get the release that matches the title"""
 
     headers = {"User-Agent": UserAgent().random}
@@ -90,7 +90,15 @@ def get_one_release(artist, release_title) -> ArtistReleases:
 
     releases_dict = {}
 
-    for id_ in ["s", "e", "m"]:
+    for type in ["album", "ep", "mixtape"]:
+        match (type):
+            case ("album"):
+                id_ = "s"
+            case ("ep"):
+                id_ = "e"
+            case ("mixtape"):
+                id_ = "m"
+
         releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
@@ -121,11 +129,13 @@ def get_one_release(artist, release_title) -> ArtistReleases:
                 year = "N/A"
 
             return {
+                "Artist": artist,
                 "Title": title,
                 "Link": link,
                 "Average": average,
                 "Ratings": ratings,
                 "Year": year,
+                "Type": type,
             }
 
 
