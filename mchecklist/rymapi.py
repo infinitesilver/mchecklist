@@ -22,7 +22,7 @@ def _get_artist_release_info(
     ratings_check = release.select_one(".disco_ratings").contents
     # If the release has any ratings
     if len(ratings_check) > 0:
-        ratings = ratings_check[0]
+        ratings = ratings_check[0].replace(",","")
     else:
         return
 

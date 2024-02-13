@@ -147,6 +147,43 @@ def delete_checklist(name: str) -> Optional[str]:
         return None
 
 
+def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
+    """Returns a new list with only the MAX_LEN releases with the highest ratings."""
+
+    releases_copy = releases.copy()
+
+    if pop_filter and pop_filter <= 1:
+        highest_ratings_release = max(
+                releases_copy, key=lambda x: int(x.ratings)
+            )
+        
+        bound = len(releases_copy)
+        i = 0
+        while i < bound:
+            release = releases_copy[i]
+            if int(release.ratings) < pop_filter * int(highest_ratings_release.ratings):
+                releases_copy.remove(release)
+                bound -= 1
+            else:
+                i += 1
+        
+    if not max_len == None and len(releases_copy) > max_len:
+        filtered_releases: List[Release] = []
+        while len(filtered_releases) < max_len:
+            highest_ratings_release = max(
+                releases_copy, key=lambda x: int(x.ratings)
+            )
+            filtered_releases.append(highest_ratings_release)
+            releases_copy.remove(highest_ratings_release)
+    else:
+        filtered_releases = releases_copy
+    
+    filtered_releases.sort(key=lambda x: int(x.year))
+    filtered_releases.sort(key=lambda x: x.type)
+
+    return filtered_releases
+
+
 def releases_to_string(
     releases: List[Release], show_ratings=False, show_average=False
 ) -> str:
