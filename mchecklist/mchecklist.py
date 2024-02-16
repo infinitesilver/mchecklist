@@ -10,22 +10,32 @@ SOURCE_DIR = Path(__file__).resolve().parent
 CHECKLIST_DIR = SOURCE_DIR.joinpath("checklists")
 CONFIG_FILE = SOURCE_DIR.joinpath("config.json")
 
+if not CONFIG_FILE.exists():
+    config_json = {
+        "current": "",
+        "popularity_filter": 0,
+        "show_ratings": False,
+        "show_average": False,
+    }
+    with open(CONFIG_FILE, "w") as config_file:
+        config_file.write(json.dumps(config_json, indent=2))
+
+with open(CONFIG_FILE) as config_file:
+    CONFIG_JSON = json.load(config_file)
+
+CURRENT_CHECKLIST = CONFIG_JSON["current"]
+POP_FILTER = CONFIG_JSON["current"]
+SHOW_RATINGS = CONFIG_JSON["show_ratings"]
+SHOW_AVERAGE = CONFIG_JSON["show_average"]
+
+CHAR_CAP = 40
+
 
 def _get_checklist_path(name: str) -> Optional[Path]:
     if checklist_exists(name):
         return CHECKLIST_DIR.joinpath(f"{name}.json")
     else:
         return None
-
-
-def _get_config_json() -> Dict:
-    with open(CONFIG_FILE) as config_file:
-        return json.load(config_file)
-
-
-def _get_current_checklist() -> str:
-    with open(CONFIG_FILE) as config_file:
-        return json.load(config_file)["Current"]
 
 
 def _write_to_config(config_json) -> None:
@@ -41,19 +51,21 @@ def _capitalize_release_type(release_type: str) -> str:
             return "EP"
         case ("mixtape"):
             return "Mixtape"
+        case ("compilation"):
+            return "Compilation"
         case _:
             raise ValueError("Not a valid release type")
 
 
 def release_to_dict(release: Release) -> Dict:
     return {
-        "Artist": release.artist,
-        "Title": release.title,
-        "Link": release.link,
-        "Ratings": release.ratings,
-        "Average": release.average,
-        "Year": release.year,
-        "Type": _capitalize_release_type(release.type),
+        "artist": release.artist,
+        "title": release.title,
+        "link": release.link,
+        "ratings": release.ratings,
+        "average": release.average,
+        "year": release.year,
+        "type": release.type,
     }
 
 
@@ -91,12 +103,12 @@ def init_checklist(name="", genres=["All"]) -> Optional[str]:
     else:
         config_json = {}
 
-    config_json["Current"] = returned_name
+    config_json["current"] = returned_name
 
     _write_to_config(config_json)
 
     # Edit new checklist
-    checklist_json = {"Genres": genres, "Releases": []}
+    checklist_json = {"to-do": [], "completed": []}
 
     with open(CHECKLIST_DIR.joinpath(f"{returned_name}.json"), "w") as checklist_file:
         checklist_file.write(json.dumps(checklist_json, indent=2))
@@ -117,9 +129,9 @@ def rename_checklist(old_name: str, new_name: str) -> Optional[str]:
     if not checklist_exists(sanitized_new_name):
         checklist_path.rename(f"{sanitized_new_name}.json")
 
-        config_json = _get_config_json()
-        if config_json["Current"] == old_name:
-            config_json["Current"] = sanitized_new_name
+        config_json = CONFIG_JSON
+        if config_json["current"] == old_name:
+            config_json["current"] = sanitized_new_name
             _write_to_config(config_json)
 
         return sanitized_new_name
@@ -135,12 +147,11 @@ def delete_checklist(name: str) -> Optional[str]:
     if checklist_path:
         checklist_path.unlink()
 
-        config_json = _get_config_json()
+        config_json = CONFIG_JSON
 
-        if config_json["Current"] == name:
-            config_json["Current"] == ""
-            with open(CONFIG_FILE) as config_file:
-                config_file.write(json.dumps(config_json, indent=2))
+        if config_json["current"] == name:
+            config_json["current"] == ""
+            _write_to_config(config_json)
 
         return name
     else:
@@ -153,10 +164,8 @@ def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
     releases_copy = releases.copy()
 
     if pop_filter and pop_filter <= 1:
-        highest_ratings_release = max(
-                releases_copy, key=lambda x: int(x.ratings)
-            )
-        
+        highest_ratings_release = max(releases_copy, key=lambda x: int(x.ratings))
+
         bound = len(releases_copy)
         i = 0
         while i < bound:
@@ -166,18 +175,16 @@ def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
                 bound -= 1
             else:
                 i += 1
-        
+
     if not max_len == None and len(releases_copy) > max_len:
         filtered_releases: List[Release] = []
         while len(filtered_releases) < max_len:
-            highest_ratings_release = max(
-                releases_copy, key=lambda x: int(x.ratings)
-            )
+            highest_ratings_release = max(releases_copy, key=lambda x: int(x.ratings))
             filtered_releases.append(highest_ratings_release)
             releases_copy.remove(highest_ratings_release)
     else:
         filtered_releases = releases_copy
-    
+
     filtered_releases.sort(key=lambda x: int(x.year))
     filtered_releases.sort(key=lambda x: x.type)
 
@@ -185,7 +192,7 @@ def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
 
 
 def releases_to_string(
-    releases: List[Release], show_ratings=False, show_average=False
+    releases: List[Release], show_ratings=False, show_average=False, compact=False
 ) -> str:
     """Converts a list of releases to a readable string."""
 
@@ -206,23 +213,30 @@ def releases_to_string(
 
     increment = 1
     for artist in artist_dict:
-        if releases_string == "":
+        if not compact and len(releases_string) == 0:
             releases_string += artist
-        else:
-            releases_string += f"\n\n{artist}"
+        elif not compact:
+            releases_string += f"\n\n{artist[:CHAR_CAP]}"
 
         for type_list in artist_dict[artist].items():
             type_name = _capitalize_release_type(type_list[0])
             releases = type_list[1]
 
-            if len(releases) > 0:
+            if not compact and len(releases) > 0:
                 releases_string += f"\n  {type_name}"
 
             for release in releases:
-                releases_string += f"\n%2d  {release.title} [{release.year}]" % (
-                    increment
-                )
-                increment += 1
+                if not compact:
+                    releases_string += (
+                        f"\n%2d  {release.title[:CHAR_CAP]} [{release.year}]"
+                        % (increment)
+                    )
+                    increment += 1
+                else:
+                    new_line = "\n"
+                    if len(releases_string) == 0:
+                        new_line = ""
+                    releases_string += f"{new_line}{release.artist[:CHAR_CAP]} - {release.title[:CHAR_CAP]} [{release.year}]"
 
                 if show_ratings:
                     releases_string += f": {release.ratings} ratings"
@@ -232,24 +246,35 @@ def releases_to_string(
     return releases_string
 
 
-def add_releases(releases: List[Release]) -> bool:
+def add_releases(releases: List[Release]) -> List[bool]:
     """Add a release entry to the current checklist."""
 
-    current_checklist_path = _get_checklist_path(_get_current_checklist())
+    added = []
+    for release in releases:
+        added.append(add_release(release))
+    
+    return added
+
+
+def add_release(release: Release) -> bool:
+    current_checklist_path = _get_checklist_path(CURRENT_CHECKLIST)
     with open(current_checklist_path) as checklist:
         checklist_json: Dict = json.load(checklist)
-        releases_list: List[Release] = checklist_json["Releases"]
+        releases_list: List[Release] = (
+            checklist_json["to-do"] + checklist_json["completed"]
+        )
 
-    for release in releases:
-        dupe = False
-        for release_entry in releases_list:
-            if release == release_entry:
-                dupe = True
+    dupe = False
+    for release_entry in releases_list:
+        if release.link == release_entry["link"]:
+            dupe = True
 
-        if not dupe:
-            releases_list.append(release_to_dict(release))
+    if dupe:
+        return False
+    
+    releases_list.append(release_to_dict(release))
 
-    checklist_json["Releases"] = releases_list
+    checklist_json["to-do"] = releases_list
     with open(current_checklist_path, "w") as checklist:
         checklist.write(json.dumps(checklist_json, indent=2))
 
@@ -260,7 +285,7 @@ def list_checklists(mark_current=True) -> Optional[List]:
     """Returns a list of checklist names from the checklists folder."""
 
     checklist_list = []
-    config_json = _get_config_json()
+    config_json = CONFIG_JSON
 
     if not CHECKLIST_DIR.exists():
         return None
@@ -271,7 +296,7 @@ def list_checklists(mark_current=True) -> Optional[List]:
 
         checklist_name = checklist.name.strip(".json")
 
-        if mark_current and checklist_name == config_json["Current"]:
+        if mark_current and checklist_name == config_json["current"]:
             checklist_list.append(f"{checklist_name} (Current)")
         else:
             checklist_list.append(checklist_name)

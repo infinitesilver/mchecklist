@@ -22,21 +22,21 @@ def _get_artist_release_info(
     ratings_check = release.select_one(".disco_ratings").contents
     # If the release has any ratings
     if len(ratings_check) > 0:
-        ratings = ratings_check[0].replace(",","")
+        ratings = int(ratings_check[0].replace(",",""))
     else:
         return
 
     average_check = release.select_one(".disco_avg_rating").contents
     # If the release has an average score
     if len(average_check) > 0:
-        average = average_check[0]
+        average = float(average_check[0])
     else:
         return
 
     year_check = release.select_one(".disco_subline").select_one("span").contents
     # If the release has a listed year
     if len(year_check) > 0:
-        year = year_check[0]
+        year = int(year_check[0])
     else:
         year = "N/A"
 

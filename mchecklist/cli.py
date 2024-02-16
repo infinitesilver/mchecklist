@@ -18,10 +18,16 @@ def _print_version(ctx, param, value):
 
 
 def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
+    if input == "all":
+        return range(0, len(releases))
+    
+    if input == 0 or input == "none":
+        return []
+
     for release in releases:
         if input.lower() == release.title.lower():
             print(releases.index(release))
-            return set([releases.index(release) + 1])
+            return set([releases.index(release)])
 
     chosen_set: Set[int] = set()
     temp = 0
@@ -31,14 +37,14 @@ def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
             chosen += char
         elif char == " ":
             if temp:
-                chosen_set = chosen_set.union(range(temp, int(chosen) + 1))
+                chosen_set = chosen_set.union(range(temp, int(chosen)))
                 chosen = ""
                 temp = 0
             else:
-                chosen_set.add(int(chosen))
+                chosen_set.add(int(chosen) - 1)
                 chosen = ""
         elif char == "-":
-            temp = int(chosen)
+            temp = int(chosen) - 1
             chosen = ""
         else:
             return None
@@ -46,9 +52,9 @@ def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
     # Add any remaining numbers
     if chosen:
         if temp:
-            chosen_set = chosen_set.union(range(temp, int(chosen) + 1))
+            chosen_set = chosen_set.union(range(temp, int(chosen)))
         else:
-            chosen_set.add(int(chosen))
+            chosen_set.add(int(chosen) - 1)
 
     return chosen_set
 
@@ -110,7 +116,7 @@ def edit(checklist_name, rename):
 
 @cli.command()
 @click.argument("checklist_name", type=str)
-def delete(checklist_name):
+def delete_checklist(checklist_name):
     """Delete a checklist with name CHECKLIST_NAME."""
 
     if not mchecklist.checklist_exists(checklist_name):
@@ -181,18 +187,47 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
         filtered_releases = mchecklist.filter_releases(releases)
 
     if add_all:
-        mchecklist.add(filtered_releases)
+        mchecklist.add_releases(filtered_releases)
         return
-    else:
-        click.echo(mchecklist.releases_to_string(filtered_releases))
-        click.echo("Choose which entries to add to the playlist (e.g. 1 2 3, or 1-3)")
+    
+    click.echo(mchecklist.releases_to_string(filtered_releases))
+    click.echo("Choose which entries to add to the playlist (e.g. 1 2 3, 1-3, or all)")
+    
+    while True:
         input: str = click.prompt(">>")
 
         selected = _parse_selection(input, filtered_releases)
 
         # If input is invalid, _parse_selection() returns None
         if selected == None:
-            click.echo("Invald input.")
+            click.echo("Invald input, try again.")
+            continue
+        elif selected == []:
+            click.echo("No releases added.")
+            return
+        else:
+            break
+    
+    to_be_added = []
+    for index in selected:
+        to_be_added.append(filtered_releases[index])
+
+    was_added = mchecklist.add_releases(to_be_added)
+
+    for release_was_added in was_added:
+        if release_was_added:
+            break
+    else:
+        click.echo("Release(s) already in checklist.")
+        return
+
+    added_releases = []
+    click.echo("Successfully added the following:")
+    for i in range(0, len(to_be_added)):
+        if was_added[i]:
+            added_releases.append(to_be_added[i])
+
+    click.echo(mchecklist.releases_to_string(added_releases, compact=True))
 
 
 @cli.command()
