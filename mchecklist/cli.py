@@ -222,20 +222,17 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
         return
 
     added_releases = []
-    click.echo("Successfully added the following:")
     for i in range(0, len(to_be_added)):
         if was_added[i]:
             added_releases.append(to_be_added[i])
 
+    click.echo("Successfully added the following:")
     click.echo(mchecklist.releases_to_string(added_releases, compact=True))
 
 
 @cli.command()
 @click.argument("release", nargs=-1)
-@click.option(
-    "--artist", type=str, help="Specify an artist other than the currently focused one"
-)
-def check(release, artist: str):
+def check(release: str):
     """Mark RELEASE as listened to."""
 
 
