@@ -51,8 +51,14 @@ def _capitalize_release_type(release_type: str) -> str:
             return "EP"
         case ("mixtape"):
             return "Mixtape"
+        case ("dj-mix"):
+            return "DJ Mix"
+        case ("single"):
+            return "Single"
         case ("compilation"):
             return "Compilation"
+        case ("bootleg"):
+            return "Bootleg"
         case _:
             raise ValueError("Not a valid release type")
 
@@ -62,6 +68,7 @@ def release_to_dict(release: Release) -> Dict:
         "artist": release.artist,
         "title": release.title,
         "link": release.link,
+        "artist_link": release.artist_link,
         "ratings": release.ratings,
         "average": release.average,
         "year": release.year,
@@ -108,7 +115,7 @@ def init_checklist(name="", genres=["All"]) -> Optional[str]:
     _write_to_config(config_json)
 
     # Edit new checklist
-    checklist_json = {"to-do": [], "completed": []}
+    checklist_json = {"viewing": [], "to-do": [], "completed": []}
 
     with open(CHECKLIST_DIR.joinpath(f"{returned_name}.json"), "w") as checklist_file:
         checklist_file.write(json.dumps(checklist_json, indent=2))
@@ -302,6 +309,16 @@ def list_checklists(mark_current=True) -> Optional[List]:
             checklist_list.append(checklist_name)
 
     return checklist_list
+
+
+def view_artist(artist: str):
+    pass
+
+
+def check_release(release: Release):
+    """Moves a release from to-do to completed"""
+
+    current_checklist_json = _get_checklist_path
 
 
 def sanitize(string: str) -> str:

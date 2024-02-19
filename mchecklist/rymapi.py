@@ -6,14 +6,18 @@ import collections
 
 
 Release = collections.namedtuple(
-    "Release", ["artist", "title", "link", "ratings", "average", "year", "type"]
+    "Release",
+    ["artist", "title", "link", "artist_link", "ratings", "average", "year", "type"],
 )
 
 Artist = collections.namedtuple("Artist", ["name", "releases"])
 
 
 def _get_artist_release_info(
-    release: Tag, release_type: str, artist_name: str
+    release: Tag,
+    release_type: str,
+    artist_name: str,
+    artist_link: str,
 ) -> Optional[Dict]:
     title_and_link = release.select_one(".disco_info a")
     title = title_and_link["title"]
@@ -22,7 +26,7 @@ def _get_artist_release_info(
     ratings_check = release.select_one(".disco_ratings").contents
     # If the release has any ratings
     if len(ratings_check) > 0:
-        ratings = int(ratings_check[0].replace(",",""))
+        ratings = int(ratings_check[0].replace(",", ""))
     else:
         return
 
@@ -40,16 +44,17 @@ def _get_artist_release_info(
     else:
         year = "N/A"
 
-    return Release(artist_name, title, link, ratings, average, year, release_type)
+    return Release(
+        artist_name, title, link, artist_link, ratings, average, year, release_type
+    )
 
 
 def get_artist_releases(artist: str, release_types=["album"]) -> List[Release]:
     """Get all releases of a certain type or types"""
 
+    artist_link = f"https://rateyourmusic.com/artist/{rymify(artist)}"
     headers = {"User-Agent": UserAgent().random}
-    response = requests.get(
-        f"https://rateyourmusic.com/artist/{rymify(artist)}", headers=headers
-    )
+    response = requests.get(artist_link, headers=headers)
 
     # Immediately terminate if artist doesn't exist
     if not response.status_code == 200:
@@ -75,7 +80,9 @@ def get_artist_releases(artist: str, release_types=["album"]) -> List[Release]:
         releases = soup.select(f"#disco_type_{id_} .disco_release")
 
         for release in releases:
-            release_entry = _get_artist_release_info(release, release_type, artist_name)
+            release_entry = _get_artist_release_info(
+                release, release_type, artist_name, artist_link
+            )
             if release_entry:
                 releases_list.append(release_entry)
 

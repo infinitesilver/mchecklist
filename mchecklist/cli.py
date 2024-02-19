@@ -231,6 +231,12 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
 
 
 @cli.command()
+@click.argument("--artist", type=str)
+def view(artist: str, release: str):
+    """View the current objective."""
+
+
+@cli.command()
 @click.argument("release", nargs=-1)
 def check(release: str):
     """Mark RELEASE as listened to."""
@@ -244,12 +250,6 @@ def next():
 @click.command()
 @click.argument("artist", type=str)
 def fetch(artist: str):
-    """Switch the focus to ARTIST."""
-
-
-@cli.command()
-@click.argument("artist", type=str)
-def focus(artist: str):
     """Switch the focus to ARTIST."""
 
 
