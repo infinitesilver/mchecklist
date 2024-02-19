@@ -20,17 +20,17 @@ def _print_version(ctx, param, value):
 def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
     if input == "all":
         return range(0, len(releases))
-    
-    if input == 0 or input == "none":
+
+    if input == "0" or input == "none":
         return []
 
     for release in releases:
         if input.lower() == release.title.lower():
             print(releases.index(release))
-            return set([releases.index(release)])
+            return {releases.index(release)}
 
     chosen_set: Set[int] = set()
-    temp = 0
+    temp = None
     chosen = ""
     for char in input:
         if char.isnumeric():
@@ -39,7 +39,7 @@ def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
             if temp:
                 chosen_set = chosen_set.union(range(temp, int(chosen)))
                 chosen = ""
-                temp = 0
+                temp = None
             else:
                 chosen_set.add(int(chosen) - 1)
                 chosen = ""
@@ -50,8 +50,8 @@ def _parse_selection(input: str, releases: List[Release] = []) -> Set[int]:
             return None
 
     # Add any remaining numbers
-    if chosen:
-        if temp:
+    if not chosen == "":
+        if not temp == None:
             chosen_set = chosen_set.union(range(temp, int(chosen)))
         else:
             chosen_set.add(int(chosen) - 1)
@@ -155,20 +155,33 @@ def list():
     help="Only fetch releases of a certain type.",
 )
 @click.option(
-    "--show-all", is_flag=True, type=bool, help="Show every release from the artist."
+    "--show-all",
+    is_flag=True,
+    type=bool,
+    default=False,
+    help="Show every release from the artist.",
 )
 @click.option(
     "--add-all",
     is_flag=True,
     type=bool,
+    default=False,
     help="Skip the selection prompt and add every release.",
 )
 @click.option(
     "--popularity-filter",
     type=float,
+    default=mchecklist.POP_FILTER,
     help="Only show releases with a certain proportion of the artist's most rated release's ratings.",
 )
-def add(artist: str, type=None, title="", show_all=False, add_all=False, popularity_filter=0):
+def add(
+    artist: str,
+    type=None,
+    title="",
+    show_all=False,
+    add_all=False,
+    popularity_filter=mchecklist.POP_FILTER,
+):
     """Select releases from ARTIST's discography to add."""
 
     releases = rymapi.get_artist_releases(artist, ALL_TYPES)
@@ -182,17 +195,21 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
     if show_all:
         filtered_releases = mchecklist.filter_releases(releases, max_len=None)
     elif popularity_filter:
-        filtered_releases = mchecklist.filter_releases(releases, pop_filter=popularity_filter)
+        filtered_releases = mchecklist.filter_releases(
+            releases, pop_filter=popularity_filter
+        )
     else:
         filtered_releases = mchecklist.filter_releases(releases)
 
     if add_all:
         mchecklist.add_releases(filtered_releases)
         return
-    
+
     click.echo(mchecklist.releases_to_string(filtered_releases))
-    click.echo("Choose which entries to add to the playlist (e.g. 1 2 3, 1-3, or all)")
-    
+    click.echo(
+        "Choose which entries to add to the checklist (e.g. 1 2 3, 1-3, all, or none)"
+    )
+
     while True:
         input: str = click.prompt(">>")
 
@@ -207,7 +224,7 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
             return
         else:
             break
-    
+
     to_be_added = []
     for index in selected:
         to_be_added.append(filtered_releases[index])
@@ -231,9 +248,24 @@ def add(artist: str, type=None, title="", show_all=False, add_all=False, popular
 
 
 @cli.command()
-@click.argument("--artist", type=str)
-def view(artist: str, release: str):
+@click.option(
+    "--artist", type=str, help="Change the objective to a different artist."
+)
+def view(artist: str):
     """View the current objective."""
+
+    if artist:
+        changed = mchecklist.view_artist(artist)
+
+        if not changed:
+            click.echo("Artist not in checklist.")
+            return
+    
+    to_be_printed = []
+    for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]:
+        to_be_printed.append(mchecklist.dict_to_release(release))
+    
+    click.echo(mchecklist.releases_to_string(to_be_printed, add=False))
 
 
 @cli.command()

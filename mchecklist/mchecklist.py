@@ -24,7 +24,12 @@ with open(CONFIG_FILE) as config_file:
     CONFIG_JSON = json.load(config_file)
 
 CURRENT_CHECKLIST = CONFIG_JSON["current"]
-POP_FILTER = CONFIG_JSON["current"]
+CURRENT_CHECKLIST_FILE = f"checklists/{CURRENT_CHECKLIST}.json"
+
+with open(CURRENT_CHECKLIST_FILE) as current_checklist:
+    CURRENT_CHECKLIST_JSON = json.load(current_checklist)
+
+POP_FILTER = float(CONFIG_JSON["popularity_filter"])
 SHOW_RATINGS = CONFIG_JSON["show_ratings"]
 SHOW_AVERAGE = CONFIG_JSON["show_average"]
 
@@ -69,11 +74,22 @@ def release_to_dict(release: Release) -> Dict:
         "title": release.title,
         "link": release.link,
         "artist_link": release.artist_link,
-        "ratings": release.ratings,
-        "average": release.average,
         "year": release.year,
         "type": release.type,
     }
+
+
+def dict_to_release(dict: Dict) -> Release:
+    return Release(
+        dict["artist"],
+        dict["title"],
+        dict["link"],
+        dict["artist_link"],
+        None,
+        None,
+        dict["year"],
+        dict["type"],
+    )
 
 
 def checklist_exists(checklist_name: str) -> bool:
@@ -199,7 +215,11 @@ def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
 
 
 def releases_to_string(
-    releases: List[Release], show_ratings=False, show_average=False, compact=False
+    releases: List[Release],
+    show_ratings=False,
+    show_average=False,
+    compact=False,
+    add=True,
 ) -> str:
     """Converts a list of releases to a readable string."""
 
@@ -239,16 +259,23 @@ def releases_to_string(
                         % (increment)
                     )
                     increment += 1
+
+                    if show_ratings:
+                        releases_string += f": {release.ratings} ratings"
+                    if show_average:
+                        releases_string += f" ({release.average})"
+                    if release_to_dict(release) in CURRENT_CHECKLIST_JSON["completed"]:
+                        releases_string += " (Completed)"
+                    if (
+                        release_to_dict(release) in CURRENT_CHECKLIST_JSON["to-do"]
+                        and add == True
+                    ):
+                        releases_string += " (In Checklist)"
                 else:
                     new_line = "\n"
                     if len(releases_string) == 0:
                         new_line = ""
                     releases_string += f"{new_line}{release.artist[:CHAR_CAP]} - {release.title[:CHAR_CAP]} [{release.year}]"
-
-                if show_ratings:
-                    releases_string += f": {release.ratings} ratings"
-                if show_average:
-                    releases_string += f" ({release.average})"
 
     return releases_string
 
@@ -259,17 +286,16 @@ def add_releases(releases: List[Release]) -> List[bool]:
     added = []
     for release in releases:
         added.append(add_release(release))
-    
+
     return added
 
 
 def add_release(release: Release) -> bool:
-    current_checklist_path = _get_checklist_path(CURRENT_CHECKLIST)
-    with open(current_checklist_path) as checklist:
-        checklist_json: Dict = json.load(checklist)
-        releases_list: List[Release] = (
-            checklist_json["to-do"] + checklist_json["completed"]
-        )
+    """Adds a release to 'to-do'"""
+
+    releases_list: List[Release] = (
+        CURRENT_CHECKLIST_JSON["to-do"] + CURRENT_CHECKLIST_JSON["completed"]
+    )
 
     dupe = False
     for release_entry in releases_list:
@@ -278,12 +304,14 @@ def add_release(release: Release) -> bool:
 
     if dupe:
         return False
-    
-    releases_list.append(release_to_dict(release))
 
-    checklist_json["to-do"] = releases_list
-    with open(current_checklist_path, "w") as checklist:
-        checklist.write(json.dumps(checklist_json, indent=2))
+    todo_list: List[Release] = CURRENT_CHECKLIST_JSON["to-do"]
+    todo_list.append(release_to_dict(release))
+
+    # edited_checklist_json = CURRENT_CHECKLIST_JSON.copy()
+    # edited_checklist_json["to-do"] = todo_list
+    with open(CURRENT_CHECKLIST_FILE, "w") as checklist:
+        checklist.write(json.dumps(CURRENT_CHECKLIST_JSON, indent=2))
 
     return True
 
@@ -311,8 +339,36 @@ def list_checklists(mark_current=True) -> Optional[List]:
     return checklist_list
 
 
-def view_artist(artist: str):
-    pass
+def view_artist(artist: str) -> bool:
+    """Place an artist's releases in 'viewing'"""
+
+    artist_link = ""
+    for release in (
+        CURRENT_CHECKLIST_JSON["to-do"] + CURRENT_CHECKLIST_JSON["completed"]
+    ):
+        if release["artist"].lower() == artist.lower():
+            artist_link = release["artist_link"]
+            break
+
+    viewing = []
+    for release in (
+        CURRENT_CHECKLIST_JSON["to-do"] + CURRENT_CHECKLIST_JSON["completed"]
+    ):
+        if release["artist_link"] == artist_link:
+            viewing.append(release)
+
+    if not viewing:
+        return False
+    
+    viewing.sort(key=lambda x: int(x["year"]))
+    viewing.sort(key=lambda x: x["type"])
+    
+    CURRENT_CHECKLIST_JSON["viewing"] = viewing
+
+    with open(CURRENT_CHECKLIST_FILE, "w") as current_checklist:
+        current_checklist.write(json.dumps(CURRENT_CHECKLIST_JSON, indent=2))
+
+    return True
 
 
 def check_release(release: Release):
