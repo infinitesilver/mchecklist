@@ -2,11 +2,15 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, List
 import re
+import random
+import os
 from rymapi import Artist, Release
 import rymapi
 
 
 SOURCE_DIR = Path(__file__).resolve().parent
+os.chdir(SOURCE_DIR)
+
 CHECKLIST_DIR = SOURCE_DIR.joinpath("checklists")
 CONFIG_FILE = SOURCE_DIR.joinpath("config.json")
 
@@ -216,8 +220,8 @@ def filter_releases(releases: List[Release], max_len=15, pop_filter=0):
 
 def releases_to_string(
     releases: List[Release],
-    show_ratings=False,
-    show_average=False,
+    show_ratings=SHOW_RATINGS,
+    show_average=SHOW_AVERAGE,
     compact=False,
     add=True,
 ) -> str:
@@ -260,9 +264,9 @@ def releases_to_string(
                     )
                     increment += 1
 
-                    if show_ratings:
+                    if show_ratings and add:
                         releases_string += f": {release.ratings} ratings"
-                    if show_average:
+                    if show_average and add:
                         releases_string += f" ({release.average})"
                     if release_to_dict(release) in CURRENT_CHECKLIST_JSON["completed"]:
                         releases_string += " (Completed)"
@@ -359,10 +363,10 @@ def view_artist(artist: str) -> bool:
 
     if not viewing:
         return False
-    
+
     viewing.sort(key=lambda x: int(x["year"]))
     viewing.sort(key=lambda x: x["type"])
-    
+
     CURRENT_CHECKLIST_JSON["viewing"] = viewing
 
     with open(CURRENT_CHECKLIST_FILE, "w") as current_checklist:
@@ -371,10 +375,44 @@ def view_artist(artist: str) -> bool:
     return True
 
 
-def check_release(release: Release):
+def view_random() -> bool:
+    if len(CURRENT_CHECKLIST_JSON["to-do"]) == 0:
+        return False
+
+    random_release = [random.choice(CURRENT_CHECKLIST_JSON["to-do"])]
+    CURRENT_CHECKLIST_JSON["viewing"] = random_release
+
+    with open(CURRENT_CHECKLIST_FILE, "w") as current_checklist:
+        current_checklist.write(json.dumps(CURRENT_CHECKLIST_JSON, indent=2))
+
+    return True
+
+
+def view_random_artist():
+    while True:
+        random_release = random.choice(CURRENT_CHECKLIST_JSON["to-do"])
+        random_artist_link = random_release["artist_link"]
+
+        for release in CURRENT_CHECKLIST_JSON["viewing"]:
+            if release["artist_link"] == random_artist_link:
+                continue
+        else:
+            break
+
+
+def check_release(release: Dict):
     """Moves a release from to-do to completed"""
 
-    current_checklist_json = _get_checklist_path
+    if not release in CURRENT_CHECKLIST_JSON["to-do"]:
+        return False
+
+    CURRENT_CHECKLIST_JSON["completed"].append(release)
+    CURRENT_CHECKLIST_JSON["to-do"].remove(release)
+
+    with open(CURRENT_CHECKLIST_FILE, "w") as checklist:
+        checklist.write(json.dumps(CURRENT_CHECKLIST_JSON, indent=2))
+    
+    return True
 
 
 def sanitize(string: str) -> str:

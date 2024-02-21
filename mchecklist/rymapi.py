@@ -157,7 +157,7 @@ def rymify(artist_name: str) -> str:
     """Converts an artist or release name to how it would appear in an RYM link."""
 
     # Convert to lowercase, convert ampersand to "and", and replace spaces with dashes
-    return artist_name.lower().replace(" & ", "-and-").replace(" ", "-")
+    return artist_name.lower().replace(" & ", "-and-").replace(" ", "-").strip(",")
 
 
 # Debug

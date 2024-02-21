@@ -186,6 +186,10 @@ def add(
 
     releases = rymapi.get_artist_releases(artist, ALL_TYPES)
 
+    if not releases:
+        click.echo("Artist not found.")
+        return
+
     if title:
         for release in releases:
             if title.lower() == release.title.lower():
@@ -203,6 +207,8 @@ def add(
 
     if add_all:
         mchecklist.add_releases(filtered_releases)
+        artist_name = filtered_releases[0].artist
+        click.echo(f"Added all {artist_name} releases.")
         return
 
     click.echo(mchecklist.releases_to_string(filtered_releases))
@@ -248,9 +254,7 @@ def add(
 
 
 @cli.command()
-@click.option(
-    "--artist", type=str, help="Change the objective to a different artist."
-)
+@click.option("--artist", type=str, help="Change the objective to a different artist.")
 def view(artist: str):
     """View the current objective."""
 
@@ -260,29 +264,94 @@ def view(artist: str):
         if not changed:
             click.echo("Artist not in checklist.")
             return
-    
-    to_be_printed = []
-    for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]:
-        to_be_printed.append(mchecklist.dict_to_release(release))
-    
-    click.echo(mchecklist.releases_to_string(to_be_printed, add=False))
+
+    click.echo(
+        mchecklist.releases_to_string(
+            [
+                mchecklist.dict_to_release(release)
+                for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]
+            ],
+            add=False,
+        )
+    )
 
 
 @cli.command()
-@click.argument("release", nargs=-1)
-def check(release: str):
-    """Mark RELEASE as listened to."""
+@click.option("-c", "--choose")
+def check(choose: str):
+    """Mark a release as listened to."""
+
+    if len(mchecklist.CURRENT_CHECKLIST_JSON["viewing"]) == 1:
+        current_release = mchecklist.CURRENT_CHECKLIST_JSON["viewing"][0]
+        mchecklist.check_release(current_release)
+        current_title = current_release["title"]
+        click.echo(f"{current_title} marked as complete.\n")
+        if mchecklist.view_random():
+            if len(mchecklist.CURRENT_CHECKLIST_JSON["viewing"]) == 0:
+                click.echo(
+                    "Checklist complete. Try 'mchecklist add' to add more releases."
+                )
+                return
+
+            click.echo(
+                mchecklist.releases_to_string(
+                    [
+                        mchecklist.dict_to_release(release)
+                        for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]
+                    ],
+                    add=False,
+                )
+            )
+            return
+
+    if len(mchecklist.CURRENT_CHECKLIST_JSON["viewing"]) == 0:
+        click.echo("Not currently viewing any releases.")
+        return
+
+    viewing = [
+        mchecklist.dict_to_release(release)
+        for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]
+    ]
+
+    if not choose:
+        click.echo(mchecklist.releases_to_string(viewing, add=False))
+        click.echo("Choose which entries to check off (e.g. 1 2 3, 1-3, all, or none)")
+
+        while True:
+            input: str = click.prompt(">>")
+
+            selected = _parse_selection(input, viewing)
+
+            # If input is invalid, _parse_selection() returns None
+            if selected == None:
+                click.echo("Invald input, try again.")
+                continue
+            elif selected == []:
+                click.echo("No releases checked.")
+                return
+            else:
+                break
+    else:
+        selected = _parse_selection(choose, viewing)
+
+    for i in selected:
+        mchecklist.check_release(mchecklist.release_to_dict(viewing[i]))
+
+    click.echo(
+        mchecklist.releases_to_string(
+            [
+                mchecklist.dict_to_release(release)
+                for release in mchecklist.CURRENT_CHECKLIST_JSON["viewing"]
+            ],
+            add=False,
+        )
+    )
 
 
 @cli.command()
+@click.option("--artist")
 def next():
-    """Focus on a new artist."""
-
-
-@click.command()
-@click.argument("artist", type=str)
-def fetch(artist: str):
-    """Switch the focus to ARTIST."""
+    """Fetch a new release."""
 
 
 @cli.command()
